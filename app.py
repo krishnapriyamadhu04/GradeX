@@ -53,6 +53,12 @@ C_DANGER    = "#B05555"   # red (muted)
 st.markdown(
     f"""
     <style>
+        /* ── Override Streamlit's primary/red theme variable ── */
+        :root, [data-testid="stAppViewContainer"], .stApp {{
+            --primary-color: {C_ACCENT} !important;
+            --primary-color-light: {C_ACCENT_LT} !important;
+            --focus-color: {C_ACCENT} !important;
+        }}
         /* ── Page background & base text ── */
         html, body, [data-testid="stAppViewContainer"] {{
             background-color: {C_BG} !important;
@@ -97,13 +103,77 @@ st.markdown(
         }}
         /* ── Streamlit divider ── */
         hr {{ border-color: {C_BORDER} !important; opacity: 0.6 !important; }}
-        /* ── Number input styling ── */
-        div[data-testid="stNumberInput"] input {{
+
+        /* ════════════════════════════════════════
+           NUMBER INPUT
+           primaryColor in config.toml sets the base accent to purple.
+           CSS here overrides the focused state to neutral grey.
+           The visible border is on div[data-baseweb="input"].
+        ════════════════════════════════════════ */
+
+        /* normal — purple */
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {{
             background-color: {C_CARD} !important;
-            border: 1.5px solid {C_BORDER} !important;
+            border: 1.5px solid {C_ACCENT} !important;
+            border-color: {C_ACCENT} !important;
             border-radius: 8px !important;
-            color: {C_TEXT} !important;
+            box-shadow: none !important;
+            outline: none !important;
+            transition: border-color 0.15s ease !important;
         }}
+        /* focused / active — grey (overrides Streamlit's primaryColor focus ring) */
+        div[data-testid="stNumberInput"] div[data-baseweb="input"]:focus-within {{
+            border: 1.5px solid #B8B8B8 !important;
+            border-color: #B8B8B8 !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }}
+        div[data-testid="stNumberInput"] div[data-baseweb="input"]:focus,
+        div[data-testid="stNumberInput"] div[data-baseweb="input"]:active {{
+            border: 1.5px solid #B8B8B8 !important;
+            border-color: #B8B8B8 !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }}
+        /* raw <input> — no own border so it never bleeds through */
+        div[data-testid="stNumberInput"] input,
+        div[data-testid="stNumberInput"] input[type="number"] {{
+            background-color: {C_CARD} !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            color: {C_TEXT} !important;
+            caret-color: {C_ACCENT} !important;
+        }}
+        div[data-testid="stNumberInput"] input:focus,
+        div[data-testid="stNumberInput"] input:focus-visible,
+        div[data-testid="stNumberInput"] input[type="number"]:focus,
+        div[data-testid="stNumberInput"] input[type="number"]:focus-visible {{
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }}
+        /* stepper buttons */
+        div[data-testid="stNumberInput"] button {{
+            color: {C_MUTED} !important;
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }}
+        div[data-testid="stNumberInput"] button:hover {{
+            color: {C_ACCENT} !important;
+            background: rgba(108,99,168,0.08) !important;
+        }}
+        div[data-testid="stNumberInput"] button:active,
+        div[data-testid="stNumberInput"] button:focus,
+        div[data-testid="stNumberInput"] button:focus-visible {{
+            color: {C_ACCENT} !important;
+            background: rgba(108,99,168,0.12) !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }}
+        /* label */
         div[data-testid="stNumberInput"] label {{
             color: {C_TEXT} !important;
             font-size: 0.88rem !important;
@@ -161,21 +231,21 @@ def page_input() -> None:
         internal_exam = st.number_input(
             "Internal Exam (out of 50)",
             min_value=0.0, max_value=50.0,
-            value=st.session_state.get("internal_exam", 35.0),
+            value=st.session_state.get("internal_exam", 0.0),
             step=0.5,
             help="Internal examination score — maximum 50 marks",
         )
         lab_practical = st.number_input(
             "Lab / Practical (out of 100)",
             min_value=0.0, max_value=100.0,
-            value=st.session_state.get("lab_practical", 72.0),
+            value=st.session_state.get("lab_practical", 0.0),
             step=1.0,
             help="Lab or practical examination score — maximum 100 marks",
         )
         previous_semester_cgpa = st.number_input(
             "Previous Semester CGPA (out of 10)",
             min_value=0.0, max_value=10.0,
-            value=st.session_state.get("previous_semester_cgpa", 6.5),
+            value=st.session_state.get("previous_semester_cgpa", 0.0),
             step=0.1,
             help="CGPA secured in the previous semester — 0 to 10",
         )
@@ -184,38 +254,59 @@ def page_input() -> None:
         assignment = st.number_input(
             "Assignment (out of 15)",
             min_value=0.0, max_value=15.0,
-            value=st.session_state.get("assignment", 10.0),
+            value=st.session_state.get("assignment", 0.0),
             step=0.5,
             help="Assignment score — maximum 15 marks",
         )
         attendance = st.number_input(
             "Attendance (out of 10)",
             min_value=0.0, max_value=10.0,
-            value=st.session_state.get("attendance", 7.5),
+            value=st.session_state.get("attendance", 0.0),
             step=0.5,
             help="Attendance marks — maximum 10",
         )
 
-    if st.button(":material/auto_graph: Predict CGPA", type="primary", use_container_width=True):
-        # Persist inputs and run prediction before switching page
-        st.session_state["internal_exam"]          = internal_exam
-        st.session_state["assignment"]             = assignment
-        st.session_state["lab_practical"]          = lab_practical
-        st.session_state["attendance"]             = attendance
-        st.session_state["previous_semester_cgpa"] = previous_semester_cgpa
+    btn_col1, btn_col2 = st.columns([3, 1])
 
-        # Run prediction and cache the result
-        input_data = pd.DataFrame(
-            [[internal_exam, assignment, lab_practical,
-              attendance, previous_semester_cgpa]],
-            columns=FEATURE_COLS,
-        )
-        input_scaled = scaler.transform(input_data)
-        rf_pred = float(np.clip(rf_model.predict(input_scaled)[0], 0.0, 10.0))
-        st.session_state["rf_pred"] = rf_pred
+    with btn_col1:
+        if st.button(":material/auto_graph: Predict CGPA", type="primary", use_container_width=True):
+            # Persist inputs and run prediction before switching page
+            st.session_state["internal_exam"]          = internal_exam
+            st.session_state["assignment"]             = assignment
+            st.session_state["lab_practical"]          = lab_practical
+            st.session_state["attendance"]             = attendance
+            st.session_state["previous_semester_cgpa"] = previous_semester_cgpa
 
-        st.session_state["page"] = "results"
-        st.rerun()
+            # If every input is 0, skip the model and return 0.00
+            all_zero = (
+                internal_exam == 0.0
+                and assignment == 0.0
+                and lab_practical == 0.0
+                and attendance == 0.0
+                and previous_semester_cgpa == 0.0
+            )
+            if all_zero:
+                rf_pred = 0.0
+            else:
+                input_data = pd.DataFrame(
+                    [[internal_exam, assignment, lab_practical,
+                      attendance, previous_semester_cgpa]],
+                    columns=FEATURE_COLS,
+                )
+                input_scaled = scaler.transform(input_data)
+                rf_pred = float(np.clip(rf_model.predict(input_scaled)[0], 0.0, 10.0))
+            st.session_state["rf_pred"] = rf_pred
+
+            st.session_state["page"] = "results"
+            st.rerun()
+
+    with btn_col2:
+        if st.button(":material/delete_sweep: Clear", use_container_width=True):
+            for key in ("internal_exam", "assignment", "lab_practical",
+                        "attendance", "previous_semester_cgpa", "rf_pred", "lr_pred"):
+                st.session_state.pop(key, None)
+            st.session_state["page"] = "input"
+            st.rerun()
 
 
 # ════════════════════════════════════════════════════════════════
@@ -271,15 +362,41 @@ def page_results() -> None:
 
     # ── 2. Input Summary ─────────────────────────────────────────
     st.markdown(":material/assignment: **Input Summary**")
-    s_col1, s_col2, s_col3, s_col4, s_col5 = st.columns(5)
-    for col, label, value, max_marks in zip(
-        [s_col1, s_col2, s_col3, s_col4, s_col5],
-        ["Internal Exam", "Assignment", "Lab / Practical", "Attendance", "Prev. CGPA"],
-        [internal_exam, assignment, lab_practical, attendance, previous_semester_cgpa],
-        [50, 15, 100, 10, 10],
-    ):
-        with col:
-            st.metric(label=f"{label} / {max_marks}", value=f"{value:.1f}")
+
+    summary_items = [
+        ("Internal Exam",          f"{internal_exam:.1f}",          "/ 50"),
+        ("Assignment",             f"{assignment:.1f}",             "/ 15"),
+        ("Lab / Practical",        f"{lab_practical:.1f}",          "/ 100"),
+        ("Attendance",             f"{attendance:.1f}",             "/ 10"),
+        ("Prev. Semester CGPA",    f"{previous_semester_cgpa:.2f}", "/ 10"),
+    ]
+
+    cards_html = "".join(f"""
+        <div style="background:{C_CARD};border:1.5px solid {C_BORDER};
+                    border-radius:12px;padding:0.85rem 1rem;
+                    display:flex;flex-direction:column;gap:0.2rem;
+                    box-shadow:0 1px 5px rgba(108,99,168,0.06);
+                    min-width:0;">
+            <span style="font-size:0.78rem;font-weight:600;color:{C_MUTED};
+                         white-space:nowrap;overflow:hidden;
+                         text-overflow:ellipsis;">{lbl}</span>
+            <span style="font-size:1.35rem;font-weight:800;color:{C_ACCENT};
+                         line-height:1.2;">{val}
+                <span style="font-size:0.85rem;font-weight:400;color:{C_MUTED};">{max_str}</span>
+            </span>
+        </div>"""
+        for lbl, val, max_str in summary_items
+    )
+
+    st.markdown(
+        f"""
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);
+                    gap:0.65rem;margin-bottom:0.4rem;">
+            {cards_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.divider()
 
     # ── 3. What Your Prediction Means ────────────────────────────
@@ -311,13 +428,14 @@ def page_results() -> None:
         )
 
     st.markdown(
+        f":material/lightbulb: <span style='font-weight:700;color:{insight_title_color};'>"
+        "What Your Prediction Means</span>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
         f"""
         <div style="background:{insight_bg};border:1.5px solid {insight_border};
-                    border-radius:12px;padding:1.3rem 1.5rem;margin-bottom:1rem;">
-            <div style="font-size:0.95rem;font-weight:700;color:{insight_title_color};
-                        margin-bottom:0.45rem;display:flex;align-items:center;gap:0.4rem;">
-                &#128161; What Your Prediction Means
-            </div>
+                    border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1rem;">
             <div style="font-size:0.92rem;color:{C_TEXT};line-height:1.65;">
                 {insight_msg}
             </div>
@@ -358,14 +476,14 @@ def page_results() -> None:
         </div>"""
 
     st.markdown(
+        f":material/target: <span style='font-weight:700;color:{C_TEXT};'>Focus Areas</span>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
         f"""
         <div style="background:{C_CARD};border:1.5px solid {C_BORDER};
-                    border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1rem;
+                    border-radius:12px;padding:1.1rem 1.5rem;margin-bottom:1rem;
                     box-shadow:0 1px 6px rgba(108,99,168,0.06);">
-            <div style="font-size:0.95rem;font-weight:700;color:{C_TEXT};
-                        margin-bottom:0.75rem;display:flex;align-items:center;gap:0.4rem;">
-                &#127919; Focus Areas
-            </div>
             {rows_html}
         </div>
         """,
